@@ -1,49 +1,36 @@
 module aptosagora::token_economics {
+    use std::string::{String};
     use std::signer;
     use std::error;
-    use std::string::{String};
     use aptos_framework::account;
-    use aptos_framework::event::{Self, EventHandle};
-    use aptos_framework::object;
-    use aptos_framework::timestamp;
     use aptos_framework::coin::{Self, MintCapability, BurnCapability, FreezeCapability};
-    use aptos_framework::fungible_asset::{Self, MintRef, TransferRef, BurnRef, Metadata};
+    use aptos_framework::event::{Self, EventHandle};
+    use aptos_framework::timestamp;
     
     /// Error codes
     const ERROR_NOT_AUTHORIZED: u64 = 1;
-    const ERROR_INSUFFICIENT_BALANCE: u64 = 2;
-    const ERROR_INVALID_REWARD_TYPE: u64 = 3;
+    const ERROR_INVALID_REWARD_TYPE: u64 = 2;
     
     /// Reward types
     const REWARD_TYPE_CONTENT_CREATION: u64 = 1;
-    const REWARD_TYPE_CONTENT_CURATION: u64 = 2;
+    const REWARD_TYPE_CURATION: u64 = 2;
     const REWARD_TYPE_ENGAGEMENT: u64 = 3;
-    const REWARD_TYPE_AGENT_OPERATION: u64 = 4;
+    const REWARD_TYPE_STAKING: u64 = 4;
     
-    /// Reward rates (in tokens * 10^8)
-    const REWARD_RATE_CONTENT_CREATION: u64 = 100 * 100000000; // 100 tokens
-    const REWARD_RATE_CONTENT_CURATION: u64 = 25 * 100000000;  // 25 tokens
-    const REWARD_RATE_ENGAGEMENT: u64 = 1 * 100000000;         // 1 token
-    const REWARD_RATE_AGENT_OPERATION: u64 = 10 * 100000000;   // 10 tokens
+    /// Base reward amounts (in token units)
+    const BASE_REWARD_CONTENT_CREATION: u64 = 100;
+    const BASE_REWARD_CURATION: u64 = 50;
+    const BASE_REWARD_ENGAGEMENT: u64 = 10;
+    const BASE_REWARD_STAKING_RATE: u64 = 5; // 5% APY
     
-    /// AptosAgora token info
-    struct AAGToken has key {
-        /// Mint capability
+    /// AptosAgora token
+    struct AAGToken {}
+    
+    /// Token capabilities
+    struct TokenCapabilities has key {
         mint_cap: MintCapability<AAGToken>,
-        /// Burn capability
         burn_cap: BurnCapability<AAGToken>,
-        /// Freeze capability
         freeze_cap: FreezeCapability<AAGToken>,
-    }
-    
-    /// Modern Fungible Asset implementation
-    struct AAGAsset has key {
-        /// Mint reference
-        mint_ref: MintRef,
-        /// Transfer reference
-        transfer_ref: TransferRef,
-        /// Burn reference
-        burn_ref: BurnRef,
     }
     
     /// Reward distribution event
@@ -56,8 +43,6 @@ module aptosagora::token_economics {
     
     /// Module state
     struct TokenEconomicsState has key {
-        /// Fungible asset metadata
-        metadata: Metadata,
         /// Total tokens minted
         total_supply: u64,
         /// Reward distribution events
@@ -66,91 +51,62 @@ module aptosagora::token_economics {
     
     /// Initialize the module and create the AAG token
     fun init_module(admin: &signer) {
+        // Ensure the admin is the module owner
+        assert!(signer::address_of(admin) == @aptosagora, error::permission_denied(ERROR_NOT_AUTHORIZED));
+        
         // Initialize AAG token
-        let (mint_cap, burn_cap, freeze_cap) = coin::initialize<AAGToken>(
+        let (burn_cap, freeze_cap, mint_cap) = coin::initialize<AAGToken>(
             admin,
-            b"AptosAgora Token",
-            b"AAG",
+            std::string::utf8(b"AptosAgora Token"),
+            std::string::utf8(b"AAG"),
             8, // 8 decimals
             true, // monitor_supply
         );
         
         // Store token capabilities
-        move_to(admin, AAGToken {
-            mint_cap,
-            burn_cap,
-            freeze_cap,
-        });
+        let token_caps = TokenCapabilities {
+            mint_cap: mint_cap,
+            burn_cap: burn_cap,
+            freeze_cap: freeze_cap,
+        };
+        move_to(admin, token_caps);
         
-        // Initialize modern fungible asset
-        let constructor_ref = &object::create_named_object(
-            admin,
-            b"AptosAgora_Asset",
-        );
-        
-        // Create the fungible asset
-        let fa_metadata = fungible_asset::create_metadata(
-            constructor_ref,
-            b"AptosAgora Asset",
-            b"AAG",
-            8, // 8 decimals
-            b"https://aptosagora.io/favicon.png", // icon URL
-            b"https://aptosagora.io", // project URL
-            vector[], // additional fields
-        );
-        
-        // Create mint/transfer/burn refs
-        let mint_ref = fungible_asset::create_mint_ref(constructor_ref);
-        let transfer_ref = fungible_asset::create_transfer_ref(constructor_ref);
-        let burn_ref = fungible_asset::create_burn_ref(constructor_ref);
-        
-        // Store asset capabilities
-        move_to(admin, AAGAsset {
-            mint_ref,
-            transfer_ref,
-            burn_ref,
-        });
-        
-        // Create module state
+        // Initialize token economics state
         let state = TokenEconomicsState {
-            metadata: fa_metadata,
             total_supply: 0,
             reward_events: account::new_event_handle<RewardDistributionEvent>(admin),
         };
         move_to(admin, state);
     }
     
-    /// Distribute rewards based on activity type
-    public entry fun distribute_reward(
+    /// Distribute tokens as a reward to a user
+    public fun distribute_reward(
         admin: &signer,
         recipient: address,
         reward_type: u64,
-        custom_amount: u64
-    ) acquires AAGToken, TokenEconomicsState {
-        // Only module account can distribute rewards
-        assert!(signer::address_of(admin) == @aptosagora, error::permission_denied(ERROR_NOT_AUTHORIZED));
+        amount_multiplier: u64
+    ) acquires TokenCapabilities, TokenEconomicsState {
+        let admin_addr = signer::address_of(admin);
         
-        // Validate reward type
+        // Verify admin is the module owner
+        assert!(admin_addr == @aptosagora, error::permission_denied(ERROR_NOT_AUTHORIZED));
+        
+        // Verify valid reward type
         assert!(
             reward_type == REWARD_TYPE_CONTENT_CREATION ||
-            reward_type == REWARD_TYPE_CONTENT_CURATION ||
+            reward_type == REWARD_TYPE_CURATION ||
             reward_type == REWARD_TYPE_ENGAGEMENT ||
-            reward_type == REWARD_TYPE_AGENT_OPERATION,
+            reward_type == REWARD_TYPE_STAKING,
             error::invalid_argument(ERROR_INVALID_REWARD_TYPE)
         );
         
-        // Determine reward amount
-        let amount = if (custom_amount > 0) {
-            custom_amount
-        } else {
-            get_reward_rate(reward_type)
-        };
+        // Calculate reward amount based on reward type and multiplier
+        let amount = calculate_reward_amount(reward_type, amount_multiplier);
         
         // Mint tokens to recipient
-        let token_data = borrow_global<AAGToken>(@aptosagora);
-        coin::mint_and_deposit(recipient, amount, &token_data.mint_cap);
+        mint_tokens(admin, recipient, amount);
         
-        // Update state
+        // Record reward distribution
         let state = borrow_global_mut<TokenEconomicsState>(@aptosagora);
         state.total_supply = state.total_supply + amount;
         
@@ -166,86 +122,44 @@ module aptosagora::token_economics {
         );
     }
     
-    /// Distribute rewards using modern fungible asset
-    public entry fun distribute_reward_fa(
-        admin: &signer,
-        recipient: address,
-        reward_type: u64,
-        custom_amount: u64
-    ) acquires AAGAsset, TokenEconomicsState {
-        // Only module account can distribute rewards
-        assert!(signer::address_of(admin) == @aptosagora, error::permission_denied(ERROR_NOT_AUTHORIZED));
-        
-        // Validate reward type
-        assert!(
-            reward_type == REWARD_TYPE_CONTENT_CREATION ||
-            reward_type == REWARD_TYPE_CONTENT_CURATION ||
-            reward_type == REWARD_TYPE_ENGAGEMENT ||
-            reward_type == REWARD_TYPE_AGENT_OPERATION,
-            error::invalid_argument(ERROR_INVALID_REWARD_TYPE)
-        );
-        
-        // Determine reward amount
-        let amount = if (custom_amount > 0) {
-            custom_amount
-        } else {
-            get_reward_rate(reward_type)
-        };
-        
-        // Get state and asset data
-        let state = borrow_global_mut<TokenEconomicsState>(@aptosagora);
-        let asset_data = borrow_global<AAGAsset>(@aptosagora);
-        
-        // Mint tokens to recipient
-        let fa = fungible_asset::mint(&asset_data.mint_ref, amount);
-        fungible_asset::deposit(recipient, fa);
-        
-        // Update state
-        state.total_supply = state.total_supply + amount;
-        
-        // Emit event
-        event::emit_event(
-            &mut state.reward_events,
-            RewardDistributionEvent {
-                recipient,
-                reward_type,
-                amount,
-                timestamp: timestamp::now_seconds(),
-            }
-        );
+    /// Mint tokens to recipient
+    fun mint_tokens(_admin: &signer, recipient: address, amount: u64) acquires TokenCapabilities {
+        let token_data = borrow_global<TokenCapabilities>(@aptosagora);
+        let coins = coin::mint<AAGToken>(amount, &token_data.mint_cap);
+        coin::deposit(recipient, coins);
     }
     
-    /// Helper to get reward rate based on type
-    fun get_reward_rate(reward_type: u64): u64 {
-        if (reward_type == REWARD_TYPE_CONTENT_CREATION) {
-            REWARD_RATE_CONTENT_CREATION
-        } else if (reward_type == REWARD_TYPE_CONTENT_CURATION) {
-            REWARD_RATE_CONTENT_CURATION
+    /// Calculate reward amount based on reward type and multiplier
+    fun calculate_reward_amount(reward_type: u64, multiplier: u64): u64 {
+        let base_amount = if (reward_type == REWARD_TYPE_CONTENT_CREATION) {
+            BASE_REWARD_CONTENT_CREATION
+        } else if (reward_type == REWARD_TYPE_CURATION) {
+            BASE_REWARD_CURATION
         } else if (reward_type == REWARD_TYPE_ENGAGEMENT) {
-            REWARD_RATE_ENGAGEMENT
-        } else if (reward_type == REWARD_TYPE_AGENT_OPERATION) {
-            REWARD_RATE_AGENT_OPERATION
+            BASE_REWARD_ENGAGEMENT
+        } else if (reward_type == REWARD_TYPE_STAKING) {
+            BASE_REWARD_STAKING_RATE
         } else {
             0
-        }
+        };
+        
+        base_amount * multiplier
     }
     
     #[view]
-    /// Get total supply (view function)
+    /// Get total token supply
     public fun get_total_supply(): u64 acquires TokenEconomicsState {
         let state = borrow_global<TokenEconomicsState>(@aptosagora);
         state.total_supply
     }
     
     #[view]
-    /// Get token metadata (view function)
-    public fun get_token_metadata(): (String, String, u8) acquires TokenEconomicsState {
-        let state = borrow_global<TokenEconomicsState>(@aptosagora);
-        
+    /// Get token info
+    public fun get_token_info(): (String, String, u8) {
         (
-            fungible_asset::name(&state.metadata),
-            fungible_asset::symbol(&state.metadata),
-            fungible_asset::decimals(&state.metadata)
+            std::string::utf8(b"AptosAgora Token"),
+            std::string::utf8(b"AAG"),
+            8  // decimals
         )
     }
 } 

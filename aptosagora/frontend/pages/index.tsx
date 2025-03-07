@@ -1,271 +1,246 @@
-import React, { useState } from 'react';
-import Head from 'next/head';
+import React, { useState, useEffect } from 'react';
 import { useWallet } from '@aptos-labs/wallet-adapter-react';
 import { Types, AptosClient } from 'aptos';
 import toast from 'react-hot-toast';
+import Layout from '../components/Layout';
+import ContentCard from '../components/ContentCard';
+import CreateContentForm from '../components/CreateContentForm';
+
+// Initialize Aptos client
+const client = new AptosClient('https://fullnode.devnet.aptoslabs.com/v1');
+
+// AptosAgora module address (defined in Move.toml)
+const MODULE_ADDRESS = '0x42';
+
+// Mock data for demonstration (until blockchain integration is complete)
+const mockContents = [
+  {
+    id: 'guide-to-aptos',
+    title: 'The Ultimate Guide to Aptos Blockchain',
+    description: 'Learn everything about Aptos blockchain, from Move language to building decentralized applications. This comprehensive guide covers all aspects of the Aptos ecosystem.',
+    contentType: 'article',
+    creator: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+    createdAt: '2023-09-15T14:32:21Z',
+    tags: ['guide', 'tutorial', 'aptos', 'blockchain'],
+    engagementCount: 128
+  },
+  {
+    id: 'ai-nft-artwork',
+    title: 'AI-Generated NFT Collection: Digital Dreamscapes',
+    description: 'Explore this unique collection of AI-generated NFT artwork that blends surrealism with digital landscapes. Each piece is one-of-a-kind and generated using cutting-edge algorithms.',
+    contentType: 'image',
+    creator: '0x2345678901abcdef2345678901abcdef2345678901abcdef2345678901abcdef',
+    createdAt: '2023-09-14T09:18:43Z',
+    tags: ['art', 'nft', 'ai', 'digital'],
+    engagementCount: 74
+  },
+  {
+    id: 'defi-protocol-overview',
+    title: 'DeFi on Aptos: Protocol Analysis and Comparison',
+    description: 'A detailed analysis of the top DeFi protocols building on Aptos blockchain. Compare features, tokenomics, security measures, and growth potential in this in-depth report.',
+    contentType: 'article',
+    creator: '0x3456789012abcdef3456789012abcdef3456789012abcdef3456789012abcdef',
+    createdAt: '2023-09-12T16:45:09Z',
+    tags: ['defi', 'finance', 'analysis', 'aptos'],
+    engagementCount: 92
+  },
+  {
+    id: 'metaverse-tutorial',
+    title: 'Building a Metaverse Experience on Aptos',
+    description: 'Step-by-step tutorial on creating immersive metaverse experiences using Aptos blockchain for digital ownership and transactions. Includes code examples and design principles.',
+    contentType: 'video',
+    creator: '0x4567890123abcdef4567890123abcdef4567890123abcdef4567890123abcdef',
+    createdAt: '2023-09-10T11:27:35Z',
+    tags: ['metaverse', 'tutorial', 'development', 'web3'],
+    engagementCount: 63
+  },
+  {
+    id: 'crypto-podcast',
+    title: 'The Future of Finance: Blockchain Revolution',
+    description: 'A podcast series exploring how blockchain technology is transforming traditional finance. Features interviews with leading experts and visionaries in the crypto space.',
+    contentType: 'audio',
+    creator: '0x5678901234abcdef5678901234abcdef5678901234abcdef5678901234abcdef',
+    createdAt: '2023-09-08T08:53:17Z',
+    tags: ['podcast', 'finance', 'future', 'interviews'],
+    engagementCount: 41
+  }
+];
 
 const HomePage = () => {
-  const { connected, account, signAndSubmitTransaction } = useWallet();
-  const [contentId, setContentId] = useState('');
-  const [contentHash, setContentHash] = useState('');
-  const [contentType, setContentType] = useState('');
-  const [description, setDescription] = useState('');
-  const [tags, setTags] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { connected, account } = useWallet();
+  const [isCreatingContent, setIsCreatingContent] = useState(false);
+  const [contents, setContents] = useState(mockContents);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleCreateContent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!connected || !account) {
-      toast.error('Please connect your wallet');
-      return;
-    }
-    
-    if (!contentId || !contentHash || !contentType || !description) {
-      toast.error('Please fill all required fields');
-      return;
-    }
-    
+  // Function to fetch contents from blockchain (to be implemented)
+  const fetchContents = async () => {
+    // In a real implementation, this would query the blockchain
+    setIsLoading(true);
     try {
-      setIsSubmitting(true);
-      
-      // Convert tags to array
-      const tagsArray = tags.split(',').map(tag => tag.trim());
-      
-      // Create transaction payload
-      const payload: Types.TransactionPayload = {
-        type: 'entry_function_payload',
-        function: 'aptosagora::content_registry::create_content',
-        type_arguments: [],
-        arguments: [
-          contentId,
-          contentHash,
-          contentType,
-          description,
-          tagsArray
-        ]
-      };
-      
-      // Submit transaction
-      const response = await signAndSubmitTransaction(payload);
-      
-      // Wait for transaction
-      const client = new AptosClient('https://fullnode.devnet.aptoslabs.com/v1');
-      await client.waitForTransaction(response.hash);
-      
-      toast.success('Content created successfully!');
-      
-      // Reset form
-      setContentId('');
-      setContentHash('');
-      setContentType('');
-      setDescription('');
-      setTags('');
-      
+      // Placeholder for blockchain query
+      // For now, use mock data
+      setTimeout(() => {
+        setContents(mockContents);
+        setIsLoading(false);
+      }, 1000);
     } catch (error) {
-      console.error(error);
-      toast.error('Error creating content');
-    } finally {
-      setIsSubmitting(false);
+      console.error('Error fetching contents:', error);
+      toast.error('Failed to load content');
+      setIsLoading(false);
     }
   };
 
+  // Fetch contents on initial load
+  useEffect(() => {
+    fetchContents();
+  }, []);
+
   return (
-    <div>
-      <Head>
-        <title>AptosAgora - AI-Driven Content Marketplace</title>
-        <meta name="description" content="Decentralized marketplace for digital content with AI agents" />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-      <main className="min-h-screen bg-gradient-to-br from-indigo-900 to-purple-900 text-white">
-        <div className="container mx-auto px-4 py-8">
-          <header className="flex justify-between items-center mb-12">
-            <div>
-              <h1 className="text-4xl font-bold">AptosAgora</h1>
-              <p className="text-purple-300">AI-Driven Decentralized Content Marketplace</p>
-            </div>
-            <div>
-              {!connected ? (
-                <button 
-                  className="bg-white text-purple-900 px-4 py-2 rounded-lg font-medium hover:bg-purple-100 transition"
-                  onClick={() => toast.error('Please install and connect wallet using the wallet adapter')}
-                >
-                  Connect Wallet
-                </button>
-              ) : (
-                <div className="text-right">
-                  <p className="text-sm text-purple-300">Connected Wallet</p>
-                  <p className="font-mono text-xs truncate w-36">{account?.address}</p>
-                </div>
-              )}
-            </div>
-          </header>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-black/20 p-6 rounded-xl backdrop-blur-sm">
-              <h2 className="text-2xl font-semibold mb-4">Create Content</h2>
-              
-              <form onSubmit={handleCreateContent}>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">Content ID</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 bg-white/10 rounded-lg text-white"
-                    placeholder="Unique identifier"
-                    value={contentId}
-                    onChange={(e) => setContentId(e.target.value)}
-                    required
-                  />
-                </div>
-                
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">Content Hash (IPFS)</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 bg-white/10 rounded-lg text-white"
-                    placeholder="IPFS CID or URL"
-                    value={contentHash}
-                    onChange={(e) => setContentHash(e.target.value)}
-                    required
-                  />
-                </div>
-                
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">Content Type</label>
-                  <select
-                    className="w-full px-3 py-2 bg-white/10 rounded-lg text-white"
-                    value={contentType}
-                    onChange={(e) => setContentType(e.target.value)}
-                    required
+    <Layout title="Home">
+      <div className="pb-12">
+        {/* Hero section */}
+        <div className="bg-indigo-700 rounded-lg shadow-xl overflow-hidden">
+          <div className="pt-10 pb-12 px-6 sm:pt-16 sm:px-16 lg:py-16 lg:pr-0 xl:py-20 xl:px-20">
+            <div className="lg:self-center">
+              <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
+                <span className="block">Welcome to AptosAgora</span>
+                <span className="block">AI-Powered Content Marketplace</span>
+              </h2>
+              <p className="mt-4 text-lg leading-6 text-indigo-200">
+                Discover, create, and monetize content with the power of AI and blockchain technology.
+                AptosAgora connects creators with audiences through a decentralized platform.
+              </p>
+              <div className="mt-8">
+                {connected ? (
+                  <button
+                    onClick={() => setIsCreatingContent(!isCreatingContent)}
+                    className="bg-white border border-transparent rounded-md shadow px-5 py-3 inline-flex items-center text-base font-medium text-indigo-600 hover:bg-indigo-50"
                   >
-                    <option value="">Select a type</option>
-                    <option value="article">Article</option>
-                    <option value="image">Image</option>
-                    <option value="video">Video</option>
-                    <option value="audio">Audio</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-                
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">Description</label>
-                  <textarea
-                    className="w-full px-3 py-2 bg-white/10 rounded-lg text-white"
-                    placeholder="Content description"
-                    rows={3}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    required
-                  />
-                </div>
-                
-                <div className="mb-6">
-                  <label className="block text-sm font-medium mb-1">Tags (comma-separated)</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 bg-white/10 rounded-lg text-white"
-                    placeholder="art, design, photography"
-                    value={tags}
-                    onChange={(e) => setTags(e.target.value)}
-                  />
-                </div>
-                
-                <button
-                  type="submit"
-                  disabled={!connected || isSubmitting}
-                  className="w-full bg-purple-600 hover:bg-purple-700 py-2 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? 'Creating...' : 'Create Content'}
-                </button>
-              </form>
-            </div>
-            
-            <div className="bg-black/20 p-6 rounded-xl backdrop-blur-sm">
-              <h2 className="text-2xl font-semibold mb-4">AI Agents</h2>
-              
-              <div className="space-y-4">
-                <div className="border border-purple-500/30 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="bg-purple-600 p-3 rounded-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">Creator Agent</h3>
-                        <p className="text-sm text-purple-300">Helps optimize your content</p>
-                      </div>
-                    </div>
-                    <button className="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded text-sm">Create</button>
+                    {isCreatingContent ? 'Cancel' : 'Create New Content'}
+                  </button>
+                ) : (
+                  <div className="text-indigo-200 text-lg">
+                    Connect your wallet to start creating content
                   </div>
-                </div>
-                
-                <div className="border border-purple-500/30 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="bg-purple-600 p-3 rounded-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">Curator Agent</h3>
-                        <p className="text-sm text-purple-300">Discovers relevant content</p>
-                      </div>
-                    </div>
-                    <button className="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded text-sm">Create</button>
-                  </div>
-                </div>
-                
-                <div className="border border-purple-500/30 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="bg-purple-600 p-3 rounded-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">Distributor Agent</h3>
-                        <p className="text-sm text-purple-300">Manages cross-platform publishing</p>
-                      </div>
-                    </div>
-                    <button className="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded text-sm">Create</button>
-                  </div>
-                </div>
+                )}
               </div>
-              
-              <div className="mt-6 text-center">
-                <p className="text-purple-300 text-sm">
-                  AI agents help you create, curate, and distribute content more effectively
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="mt-12 text-center">
-            <h2 className="text-2xl font-semibold mb-4">Featured Content</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              <div className="bg-black/30 rounded-lg overflow-hidden">
-                <div className="h-40 bg-gradient-to-r from-purple-500 to-pink-500"></div>
-                <div className="p-4">
-                  <h3 className="font-semibold truncate">Example Content Title</h3>
-                  <p className="text-sm text-purple-300 mt-1">Creator: 0x1234...5678</p>
-                  <div className="flex mt-2">
-                    <span className="text-xs bg-purple-700 px-2 py-0.5 rounded mr-1">art</span>
-                    <span className="text-xs bg-purple-700 px-2 py-0.5 rounded">design</span>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Additional content cards would be here */}
             </div>
           </div>
         </div>
-      </main>
-    </div>
+
+        {/* Content creation form */}
+        {isCreatingContent && connected && (
+          <div className="mt-8">
+            <CreateContentForm
+              onSuccess={() => {
+                setIsCreatingContent(false);
+                fetchContents();
+              }}
+            />
+          </div>
+        )}
+
+        {/* Content listing */}
+        <div className="mt-12">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-900">Featured Content</h2>
+            <div className="text-sm">
+              <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
+                View all<span aria-hidden="true"> &rarr;</span>
+              </a>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="mt-6 grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
+              {[...Array(3)].map((_, index) => (
+                <div key={index} className="animate-pulse">
+                  <div className="bg-gray-200 rounded-lg h-64"></div>
+                  <div className="mt-4 h-4 bg-gray-200 rounded w-3/4"></div>
+                  <div className="mt-2 h-4 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-6 grid grid-cols-1 gap-y-10 gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
+              {contents.map((content) => (
+                <ContentCard
+                  key={content.id}
+                  id={content.id}
+                  title={content.title}
+                  description={content.description}
+                  contentType={content.contentType}
+                  creator={content.creator}
+                  createdAt={content.createdAt}
+                  tags={content.tags}
+                  engagementCount={content.engagementCount}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Feature highlights */}
+        <div className="mt-16">
+          <h2 className="text-2xl font-bold text-gray-900">Platform Features</h2>
+          <div className="mt-6 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="p-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0 bg-indigo-500 rounded-md p-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-lg font-medium text-gray-900">AI-Powered Creation</h3>
+                    <p className="mt-2 text-base text-gray-500">
+                      Leverage AI agents to assist in content creation, curation, and optimization.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="p-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0 bg-indigo-500 rounded-md p-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-lg font-medium text-gray-900">Token Economy</h3>
+                    <p className="mt-2 text-base text-gray-500">
+                      Earn rewards through engagement, content creation, and curation activities.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="p-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0 bg-indigo-500 rounded-md p-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-lg font-medium text-gray-900">Decentralized Ownership</h3>
+                    <p className="mt-2 text-base text-gray-500">
+                      Full ownership and control of your content with transparent on-chain provenance.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Layout>
   );
 };
 

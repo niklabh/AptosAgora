@@ -1,0 +1,13 @@
+[package]
+name = "MinimalTest"
+version = "0.1.0"
+authors = ["AptosAgora Team"]
+
+[addresses]
+minimal_test = "0x42"
+
+[dev-addresses]
+minimal_test = "0x42"
+
+[dependencies]
+AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-framework/", rev = "devnet" } 

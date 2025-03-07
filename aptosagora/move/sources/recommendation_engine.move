@@ -90,19 +90,35 @@ module aptosagora::recommendation_engine {
         content_ids: vector<String>,
         scores: vector<u64>,
         source: u64
-    ) acquires RecommendationEngineState {
+    ) acquires RecommendationEngineState, UserRecommendations {
         // Only module account can add recommendations directly
         assert!(signer::address_of(authorized_account) == @aptosagora, error::permission_denied(ERROR_NOT_AUTHORIZED));
         
-        let state = borrow_global_mut<RecommendationEngineState>(@aptosagora);
         let now = timestamp::now_seconds();
         
         // Ensure both vectors have the same length
         assert!(vector::length(&content_ids) == vector::length(&scores), error::invalid_argument(ERROR_NOT_AUTHORIZED));
         
+        // Get recommendation engine state
+        let state = borrow_global_mut<RecommendationEngineState>(@aptosagora);
+        
         // Initialize user recommendations if needed
         if (!table::contains(&state.user_recommendations, user)) {
-            initialize_user_recommendations(authorized_account, user);
+            // Create empty recommendations list
+            let user_recs = UserRecommendations {
+                user,
+                recommendations: vector::empty(),
+                last_updated: now,
+            };
+            
+            // Create a new object to host the recommendations
+            let constructor_ref = object::create_object_from_account(authorized_account);
+            let recs_obj = object::object_from_constructor_ref<UserRecommendations>(&constructor_ref);
+            let recs_signer = object::generate_signer(&constructor_ref);
+            move_to(&recs_signer, user_recs);
+            
+            // Store in table
+            table::add(&mut state.user_recommendations, user, recs_obj);
         };
         
         // Get user recommendations
@@ -158,7 +174,7 @@ module aptosagora::recommendation_engine {
     public entry fun mark_recommendation_viewed(
         user: &signer,
         content_id: String
-    ) acquires RecommendationEngineState {
+    ) acquires RecommendationEngineState, UserRecommendations {
         let user_addr = signer::address_of(user);
         let state = borrow_global_mut<RecommendationEngineState>(@aptosagora);
         
@@ -190,7 +206,7 @@ module aptosagora::recommendation_engine {
     public entry fun mark_recommendation_engaged(
         user: &signer,
         content_id: String
-    ) acquires RecommendationEngineState {
+    ) acquires RecommendationEngineState, UserRecommendations {
         let user_addr = signer::address_of(user);
         let state = borrow_global_mut<RecommendationEngineState>(@aptosagora);
         
@@ -229,29 +245,6 @@ module aptosagora::recommendation_engine {
         );
     }
     
-    /// Initialize recommendations for a new user
-    fun initialize_user_recommendations(
-        admin: &signer,
-        user: address
-    ) acquires RecommendationEngineState {
-        let state = borrow_global_mut<RecommendationEngineState>(@aptosagora);
-        
-        // Create empty recommendations list
-        let user_recs = UserRecommendations {
-            user,
-            recommendations: vector::empty(),
-            last_updated: timestamp::now_seconds(),
-        };
-        
-        // Create a new object to host the recommendations
-        let recs_obj = object::create_object_from_account(admin);
-        let recs_signer = object::generate_signer(&recs_obj);
-        move_to(&recs_signer, user_recs);
-        
-        // Store in table
-        table::add(&mut state.user_recommendations, user, recs_obj);
-    }
-    
     #[view]
     /// Get recommendations for a user (view function)
     public fun get_recommendations(user: address): (
@@ -262,7 +255,7 @@ module aptosagora::recommendation_engine {
         vector<bool>,   // is_viewed
         vector<bool>,   // is_engaged
         u64             // last_updated
-    ) acquires RecommendationEngineState {
+    ) acquires RecommendationEngineState, UserRecommendations {
         let state = borrow_global<RecommendationEngineState>(@aptosagora);
         
         // If user doesn't have recommendations yet, return empty vectors

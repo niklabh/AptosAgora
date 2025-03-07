@@ -29,6 +29,9 @@ aptosagora/
 │   │   ├── reputation_system.move     # Content quality tracking 
 │   │   └── aptosagora_tests.move      # Test module
 │   └── tests/          # Additional tests for Move modules
+├── hello_world/        # Minimal working example
+│   ├── sources/        # Simple hello world module
+│   └── Move.toml       # Package configuration
 ├── frontend/           # Web application frontend
 │   ├── pages/          # Next.js pages
 │   ├── components/     # React components
@@ -70,16 +73,26 @@ The frontend is built with Next.js and Tailwind CSS, providing a modern and resp
 
 1. Install the Aptos CLI and set up your development environment following the [Aptos documentation](https://aptos.dev/tools/aptos-cli/)
 
-2. Compile Move modules
+2. Compile the minimal hello_world module (working example):
    ```
-   cd aptosagora/move
+   cd aptosagora/hello_world
    aptos move compile
    ```
 
-3. Run tests
+3. For the full project, compilation requires fixing some dependencies and implementation details:
    ```
-   aptos move test
+   cd aptosagora/move
+   aptos move compile --named-addresses aptosagora=0x42
    ```
+
+### Compilation Notes
+
+The project contains a mix of implemented and stub modules. The hello_world module is fully implemented and can be compiled successfully. The other modules require additional implementation work to compile successfully.
+
+Common compilation issues:
+- Option type usage in agent_framework.move
+- Object creation and reference handling
+- Fungible asset implementation details
 
 ### Frontend Setup
 
