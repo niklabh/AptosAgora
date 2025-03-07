@@ -1,7 +1,5 @@
 # AptosAgora
 
-![AptosAgora Logo](docs/images/logo.png)
-
 AptosAgora is an AI-driven decentralized content marketplace built on the Aptos blockchain. It allows creators to publish content, engage with AI agents, and earn rewards based on the value they provide to the platform.
 
 ## Features
