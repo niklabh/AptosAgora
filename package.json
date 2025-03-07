@@ -1,0 +1,20 @@
+{
+  "name": "aptosagora",
+  "version": "0.1.0",
+  "description": "AI-driven decentralized content marketplace built on the Aptos blockchain",
+  "main": "index.js",
+  "scripts": {
+    "deploy": "ts-node scripts/deploy.ts",
+    "deploy:devnet": "ts-node scripts/deploy.ts --network devnet",
+    "deploy:testnet": "ts-node scripts/deploy.ts --network testnet",
+    "compile": "cd move && aptos move compile"
+  },
+  "dependencies": {
+    "aptos": "^1.7.2"
+  },
+  "devDependencies": {
+    "@types/node": "^18.15.11",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.4"
+  }
+} 

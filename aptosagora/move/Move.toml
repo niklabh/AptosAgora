@@ -1,0 +1,10 @@
+[package]
+name = "AptosAgora"
+version = "0.1.0"
+authors = ["AptosAgora Team"]
+
+[addresses]
+aptosagora = "_"
+
+[dependencies]
+AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-framework/", rev = "main" } 
