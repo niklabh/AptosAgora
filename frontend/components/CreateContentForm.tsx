@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useWallet } from '@aptos-labs/wallet-adapter-react';
 import { Types } from 'aptos';
 import toast from 'react-hot-toast';
+import { aptosConfig } from '../utils/aptosClient';
 
-// AptosAgora module address (defined in Move.toml)
-const MODULE_ADDRESS = '0x42';
+// Use module address from aptosConfig
+const MODULE_ADDRESS = aptosConfig.moduleAddress;
 const MODULE_NAME = 'content_registry';
 const FUNCTION_NAME = 'create_content';
 
