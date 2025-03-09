@@ -6,6 +6,13 @@ const APTOS_NETWORK = (process.env.NEXT_PUBLIC_APTOS_NETWORK || 'devnet') as Net
 const APTOS_MODULE_ADDRESS = process.env.NEXT_PUBLIC_APTOS_MODULE_ADDRESS || '0x1';
 const APTOS_EXPLORER_URL = process.env.NEXT_PUBLIC_APTOS_EXPLORER_URL || 'https://explorer.aptoslabs.com';
 
+// Log environment variable loading for debugging
+console.log('🔄 Aptos Configuration Loading:');
+console.log(`🔗 NODE URL: ${APTOS_NODE_URL}`);
+console.log(`🌐 NETWORK: ${APTOS_NETWORK}`);
+console.log(`📦 MODULE ADDRESS: ${APTOS_MODULE_ADDRESS}`);
+console.log(`🔍 EXPLORER URL: ${APTOS_EXPLORER_URL}`);
+
 // Create a singleton client
 export const client = new AptosClient(APTOS_NODE_URL);
 
@@ -16,6 +23,8 @@ export const aptosConfig = {
   moduleAddress: APTOS_MODULE_ADDRESS,
   explorerUrl: APTOS_EXPLORER_URL
 };
+
+console.log('✅ Aptos Configuration Loaded:', aptosConfig);
 
 // Helper to get transaction URL for explorer
 export const getTransactionUrl = (txHash: string): string => {

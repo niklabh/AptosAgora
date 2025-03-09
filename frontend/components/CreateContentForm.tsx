@@ -42,6 +42,17 @@ const CreateContentForm: React.FC<CreateContentFormProps> = ({ onSuccess }) => {
       // Convert tags to a vector
       const tagsVector = tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
       
+      // Log transaction function path for debugging
+      console.log('📝 Creating content with function path:', `${MODULE_ADDRESS}::${MODULE_NAME}::${FUNCTION_NAME}`);
+      console.log('📝 Module Address:', MODULE_ADDRESS);
+      console.log('📝 Content Data:', {
+        contentId,
+        contentHash,
+        contentType,
+        description,
+        tagsVector
+      });
+      
       // Build transaction payload
       const payload = {
         type: "entry_function_payload",
@@ -55,6 +66,8 @@ const CreateContentForm: React.FC<CreateContentFormProps> = ({ onSuccess }) => {
           tagsVector
         ],
       };
+      
+      console.log('📝 Transaction Payload:', payload);
       
       // Submit transaction to the blockchain
       const response = await signAndSubmitTransaction(payload);
