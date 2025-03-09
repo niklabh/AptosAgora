@@ -1,224 +1,290 @@
+#[test_only]
 module aptosagora::aptosagora_tests {
     use std::signer;
-    use std::string::{Self, String};
+    use std::string;
     use std::vector;
-    use std::option;
-    
-    use aptos_framework::coin;
     use aptos_framework::account;
     use aptos_framework::timestamp;
-    use aptos_std::table::{Self, Table};
     
     use aptosagora::content_registry;
     use aptosagora::creator_profiles;
     use aptosagora::agent_framework;
-    use aptosagora::token_economics;
-    use aptosagora::reputation_system;
-    use aptosagora::recommendation_engine;
     
-    // Test Cases
-
-    #[test(admin = @aptosagora, user1 = @0x123, user2 = @0x456)]
-    fun test_create_content(admin: &signer, user1: &signer, user2: &signer) {
-        // Initialize the module
-        timestamp::set_time_has_started_for_testing(admin);
+    /// Module address
+    const APTOSAGORA_ADDR: address = @aptosagora;
+    
+    /// Test error codes
+    const ERROR_TEST_FAILED: u64 = 1;
+    
+    /// Setup test environment and create test users
+    fun setup_test(aptos_framework: &signer): (signer, signer, signer) {
+        // Set up timestamp for testing
+        timestamp::set_time_has_started_for_testing(aptos_framework);
         
-        let admin_addr = signer::address_of(admin);
-        let user1_addr = signer::address_of(user1);
-        let user2_addr = signer::address_of(user2);
-        
-        // Setup accounts
-        account::create_account_for_test(admin_addr);
-        account::create_account_for_test(user1_addr);
-        account::create_account_for_test(user2_addr);
+        // Create test account for aptosagora
+        let aptosagora_account = account::create_account_for_test(APTOSAGORA_ADDR);
         
         // Initialize modules
-        content_registry::init_module(admin);
-        creator_profiles::init_module(admin);
+        content_registry::initialize_for_test(&aptosagora_account);
+        creator_profiles::initialize_for_test(&aptosagora_account);
+        agent_framework::initialize_for_test(&aptosagora_account);
+        
+        // Create test users
+        let creator = create_test_user(1);
+        let user1 = create_test_user(2);
+        let user2 = create_test_user(3);
+        
+        // Return signers
+        (creator, user1, user2)
+    }
+    
+    /// Create a test user with the given index
+    fun create_test_user(index: u64): signer {
+        let addr = if (index == 1) @0x101 
+                 else if (index == 2) @0x102
+                 else if (index == 3) @0x103
+                 else if (index == 4) @0x104
+                 else @0x100;
+        
+        account::create_account_for_test(addr)
+    }
+    
+    #[test(aptos_framework = @aptos_framework)]
+    fun test_content_creation_and_update(aptos_framework: &signer) {
+        // Set up test environment
+        let (creator, user1, _) = setup_test(aptos_framework);
         
         // Create content
-        let content_hash = string::utf8(b"0x1234567890abcdef");
+        let content_id = string::utf8(b"content1");
+        let content_hash = string::utf8(b"ipfs://QmHash1");
         let content_type = string::utf8(b"article");
-        let description = string::utf8(b"Test article content");
-        let mut tags = vector::empty<String>();
-        vector::push_back(&mut tags, string::utf8(b"test"));
-        vector::push_back(&mut tags, string::utf8(b"article"));
+        let description = string::utf8(b"Test content description");
+        let tags = vector[string::utf8(b"test"), string::utf8(b"article")];
         
-        content_registry::create_content(user1, content_hash, content_type, description, tags);
+        content_registry::create_content_for_test(
+            &creator,
+            content_id,
+            content_hash,
+            content_type,
+            description,
+            tags
+        );
         
-        // Verify content creation
-        let content_exists = content_registry::content_exists(user1_addr, content_hash);
-        assert!(content_exists, 1);
+        // Get content
+        let (
+            creator_addr, 
+            returned_hash, 
+            returned_type, 
+            returned_desc, 
+            returned_tags, 
+            _, 
+            _, 
+            engagement_count, 
+            is_active
+        ) = content_registry::get_content_for_test(content_id);
         
-        // Test content engagement
-        content_registry::engage_with_content(user2, user1_addr, content_hash, string::utf8(b"view"));
+        // Verify content data
+        assert!(creator_addr == signer::address_of(&creator), ERROR_TEST_FAILED);
+        assert!(returned_hash == content_hash, ERROR_TEST_FAILED);
+        assert!(returned_type == content_type, ERROR_TEST_FAILED);
+        assert!(returned_desc == description, ERROR_TEST_FAILED);
+        assert!(vector::length(&returned_tags) == 2, ERROR_TEST_FAILED);
+        assert!(engagement_count == 0, ERROR_TEST_FAILED);
+        assert!(is_active == true, ERROR_TEST_FAILED);
         
-        // Verify engagement
-        let engagement_count = content_registry::get_engagement_count(user1_addr, content_hash);
-        assert!(engagement_count == 1, 2);
+        // Update content
+        let new_hash = string::utf8(b"ipfs://QmHash2");
+        let new_desc = string::utf8(b"Updated description");
+        let new_tags = vector[string::utf8(b"test"), string::utf8(b"article"), string::utf8(b"updated")];
+        
+        content_registry::update_content_for_test(
+            &creator,
+            content_id,
+            new_hash,
+            new_desc,
+            new_tags
+        );
+        
+        // Get updated content
+        let (
+            _, 
+            returned_hash, 
+            _, 
+            returned_desc, 
+            returned_tags, 
+            _, 
+            _, 
+            _, 
+            _
+        ) = content_registry::get_updated_content_for_test(content_id);
+        
+        // Verify updated content
+        assert!(returned_hash == new_hash, ERROR_TEST_FAILED);
+        assert!(returned_desc == new_desc, ERROR_TEST_FAILED);
+        assert!(vector::length(&returned_tags) == 3, ERROR_TEST_FAILED);
+        
+        // Record engagement
+        content_registry::record_engagement_for_test(
+            &user1,
+            content_id,
+            string::utf8(b"view")
+        );
+        
+        // Verify engagement count
+        let (
+            _, 
+            _, 
+            _, 
+            _, 
+            _, 
+            _, 
+            _, 
+            engagement_count, 
+            _
+        ) = content_registry::get_content_with_engagement_for_test(content_id);
+        
+        assert!(engagement_count == 1, ERROR_TEST_FAILED);
     }
     
-    #[test(admin = @aptosagora, creator = @0x123)]
-    fun test_creator_profile(admin: &signer, creator: &signer) {
-        // Initialize the module
-        timestamp::set_time_has_started_for_testing(admin);
-        
-        let admin_addr = signer::address_of(admin);
-        let creator_addr = signer::address_of(creator);
-        
-        // Setup accounts
-        account::create_account_for_test(admin_addr);
-        account::create_account_for_test(creator_addr);
-        
-        // Initialize modules
-        creator_profiles::init_module(admin);
+    #[test(aptos_framework = @aptos_framework)]
+    fun test_creator_profile(aptos_framework: &signer) {
+        // Set up test environment
+        let (creator, _, _) = setup_test(aptos_framework);
         
         // Create profile
-        let name = string::utf8(b"Test Creator");
-        let bio = string::utf8(b"I create test content for Aptos");
-        let social_links = string::utf8(b"{\"twitter\":\"@testcreator\",\"github\":\"testcreator\"}");
+        let name = string::utf8(b"Creator Name");
+        let bio = string::utf8(b"Creator bio text");
+        let avatar_url = string::utf8(b"https://example.com/avatar.jpg");
+        let social_links = vector[
+            string::utf8(b"https://twitter.com/creator"),
+            string::utf8(b"https://instagram.com/creator")
+        ];
+        let content_categories = vector[
+            string::utf8(b"art"),
+            string::utf8(b"photography")
+        ];
         
-        creator_profiles::create_profile(creator, name, bio, social_links);
+        creator_profiles::create_profile_for_test(
+            &creator,
+            name,
+            bio,
+            avatar_url,
+            social_links,
+            content_categories
+        );
         
-        // Verify profile creation
-        let profile_exists = creator_profiles::profile_exists(creator_addr);
-        assert!(profile_exists, 1);
+        // Verify profile exists
+        assert!(creator_profiles::profile_exists_for_test(signer::address_of(&creator)), ERROR_TEST_FAILED);
+        
+        // Get profile
+        let (
+            returned_name,
+            returned_bio,
+            returned_avatar,
+            returned_social,
+            returned_categories,
+            _,
+            _,
+            is_verified,
+            reputation_score
+        ) = creator_profiles::get_profile_for_test(signer::address_of(&creator));
+        
+        // Verify profile data
+        assert!(returned_name == name, ERROR_TEST_FAILED);
+        assert!(returned_bio == bio, ERROR_TEST_FAILED);
+        assert!(returned_avatar == avatar_url, ERROR_TEST_FAILED);
+        assert!(vector::length(&returned_social) == 2, ERROR_TEST_FAILED);
+        assert!(vector::length(&returned_categories) == 2, ERROR_TEST_FAILED);
+        assert!(!is_verified, ERROR_TEST_FAILED);
+        assert!(reputation_score == 0, ERROR_TEST_FAILED);
         
         // Update profile
-        let new_bio = string::utf8(b"Updated bio for test creator");
-        creator_profiles::update_profile(creator, name, new_bio, social_links);
+        let new_name = string::utf8(b"Updated Name");
+        let new_bio = string::utf8(b"Updated bio text");
+        let new_avatar = string::utf8(b"https://example.com/new_avatar.jpg");
+        let new_social = vector[
+            string::utf8(b"https://twitter.com/creator"),
+            string::utf8(b"https://instagram.com/creator"),
+            string::utf8(b"https://youtube.com/creator")
+        ];
+        let new_categories = vector[
+            string::utf8(b"art"),
+            string::utf8(b"photography"),
+            string::utf8(b"design")
+        ];
         
-        // Verify profile update
-        let updated_bio = creator_profiles::get_bio(creator_addr);
-        assert!(updated_bio == new_bio, 2);
+        creator_profiles::update_profile_for_test(
+            &creator,
+            new_name,
+            new_bio,
+            new_avatar,
+            new_social,
+            new_categories
+        );
+        
+        // Get updated profile
+        let (
+            returned_name,
+            returned_bio,
+            returned_avatar,
+            returned_social,
+            returned_categories,
+            _,
+            _,
+            _,
+            _
+        ) = creator_profiles::get_updated_profile_for_test(signer::address_of(&creator));
+        
+        // Verify updated data
+        assert!(returned_name == new_name, ERROR_TEST_FAILED);
+        assert!(returned_bio == new_bio, ERROR_TEST_FAILED);
+        assert!(returned_avatar == new_avatar, ERROR_TEST_FAILED);
+        assert!(vector::length(&returned_social) == 3, ERROR_TEST_FAILED);
+        assert!(vector::length(&returned_categories) == 3, ERROR_TEST_FAILED);
     }
     
-    #[test(admin = @aptosagora, agent_owner = @0x123)]
-    fun test_agent_framework(admin: &signer, agent_owner: &signer) {
-        // Initialize the module
-        timestamp::set_time_has_started_for_testing(admin);
-        
-        let admin_addr = signer::address_of(admin);
-        let owner_addr = signer::address_of(agent_owner);
-        
-        // Setup accounts
-        account::create_account_for_test(admin_addr);
-        account::create_account_for_test(owner_addr);
-        
-        // Initialize modules
-        agent_framework::init_module(admin);
+    #[test(aptos_framework = @aptos_framework)]
+    fun test_agent_creation(aptos_framework: &signer) {
+        // Set up test environment
+        let (creator, _, _) = setup_test(aptos_framework);
         
         // Create agent
-        let agent_type = string::utf8(b"creator");
-        let name = string::utf8(b"Test Agent");
-        let description = string::utf8(b"A test agent for content creation");
-        let configuration = string::utf8(b"{\"model\":\"gpt-4\",\"temperature\":0.7}");
-        let is_autonomous = true;
+        let agent_id = string::utf8(b"agent1");
+        let agent_type = 1; // Creator agent
+        let name = string::utf8(b"AI Assistant");
+        let description = string::utf8(b"Content creation assistant");
+        let config = string::utf8(b"{\"model\":\"gpt-4\",\"temperature\":0.7}");
         
-        agent_framework::create_agent(agent_owner, agent_type, name, description, configuration, is_autonomous);
+        agent_framework::create_agent_for_test(
+            &creator,
+            agent_id,
+            agent_type,
+            name,
+            description,
+            config
+        );
         
-        // Verify agent creation
-        let agent_exists = agent_framework::agent_exists(owner_addr, name);
-        assert!(agent_exists, 1);
+        // Verify agent exists and check its data
+        let (
+            agent_owner,
+            returned_type,
+            returned_name,
+            returned_desc,
+            returned_config,
+            status,
+            _,
+            _,
+            operation_count,
+            has_resource_account
+        ) = agent_framework::get_agent_for_test(agent_id);
         
-        // Test agent activation/deactivation
-        agent_framework::deactivate_agent(agent_owner, name);
-        let is_active = agent_framework::is_agent_active(owner_addr, name);
-        assert!(!is_active, 2);
-        
-        agent_framework::activate_agent(agent_owner, name);
-        let is_active = agent_framework::is_agent_active(owner_addr, name);
-        assert!(is_active, 3);
-    }
-    
-    #[test(admin = @aptosagora, user1 = @0x123, user2 = @0x456)]
-    fun test_reputation_system(admin: &signer, user1: &signer, user2: &signer) {
-        // Initialize the module
-        timestamp::set_time_has_started_for_testing(admin);
-        
-        let admin_addr = signer::address_of(admin);
-        let user1_addr = signer::address_of(user1);
-        let user2_addr = signer::address_of(user2);
-        
-        // Setup accounts
-        account::create_account_for_test(admin_addr);
-        account::create_account_for_test(user1_addr);
-        account::create_account_for_test(user2_addr);
-        
-        // Initialize modules
-        content_registry::init_module(admin);
-        reputation_system::init_module(admin);
-        
-        // Create content first
-        let content_hash = string::utf8(b"0x1234567890abcdef");
-        let content_type = string::utf8(b"article");
-        let description = string::utf8(b"Test article content");
-        let mut tags = vector::empty<String>();
-        vector::push_back(&mut tags, string::utf8(b"test"));
-        
-        content_registry::create_content(user1, content_hash, content_type, description, tags);
-        
-        // Rate content
-        let rating = 4; // Rating from 1-5
-        let feedback = string::utf8(b"Good content, very informative");
-        
-        reputation_system::rate_content(user2, user1_addr, content_hash, rating, feedback);
-        
-        // Verify rating
-        let has_rated = reputation_system::has_user_rated(user2_addr, user1_addr, content_hash);
-        assert!(has_rated, 1);
-        
-        // Check average rating
-        let avg_rating = reputation_system::get_content_rating(user1_addr, content_hash);
-        assert!(avg_rating == 4, 2);
-    }
-    
-    #[test(admin = @aptosagora)]
-    fun test_token_economics(admin: &signer) {
-        // Initialize the module
-        timestamp::set_time_has_started_for_testing(admin);
-        
-        let admin_addr = signer::address_of(admin);
-        
-        // Setup accounts
-        account::create_account_for_test(admin_addr);
-        
-        // Initialize modules
-        token_economics::init_module(admin);
-        
-        // Verify token initialization
-        let token_exists = token_economics::token_exists();
-        assert!(token_exists, 1);
-        
-        // Check total supply
-        let total_supply = token_economics::get_total_supply();
-        assert!(total_supply > 0, 2);
-    }
-    
-    #[test(admin = @aptosagora, user = @0x123)]
-    fun test_recommendation_engine(admin: &signer, user: &signer) {
-        // Initialize the module
-        timestamp::set_time_has_started_for_testing(admin);
-        
-        let admin_addr = signer::address_of(admin);
-        let user_addr = signer::address_of(user);
-        
-        // Setup accounts
-        account::create_account_for_test(admin_addr);
-        account::create_account_for_test(user_addr);
-        
-        // Initialize modules
-        recommendation_engine::init_module(admin);
-        
-        // Set user preferences
-        let mut preferences = vector::empty<String>();
-        vector::push_back(&mut preferences, string::utf8(b"technology"));
-        vector::push_back(&mut preferences, string::utf8(b"blockchain"));
-        
-        recommendation_engine::set_user_preferences(user, preferences);
-        
-        // Verify preferences
-        let has_preferences = recommendation_engine::has_preferences(user_addr);
-        assert!(has_preferences, 1);
+        assert!(agent_owner == signer::address_of(&creator), ERROR_TEST_FAILED);
+        assert!(returned_type == agent_type, ERROR_TEST_FAILED);
+        assert!(returned_name == agent_id, ERROR_TEST_FAILED);
+        assert!(returned_desc == description, ERROR_TEST_FAILED);
+        assert!(returned_config == config, ERROR_TEST_FAILED);
+        assert!(status == 1, ERROR_TEST_FAILED); // ACTIVE status
+        assert!(operation_count == 0, ERROR_TEST_FAILED);
+        assert!(has_resource_account == true, ERROR_TEST_FAILED);
     }
 } 

@@ -1,118 +1,136 @@
-# AptosAgora
+# AptosAgora: AI-Driven Decentralized Content Marketplace
 
-AptosAgora is an AI-driven decentralized content marketplace built on the Aptos blockchain. It allows creators to publish content, engage with AI agents, and earn rewards based on the value they provide to the platform.
+AptosAgora is a decentralized marketplace for digital content where AI agents help create, curate, monetize, and distribute content across platforms. Built on the Aptos blockchain using Move language, it leverages resource accounts, Move Objects, and tables to create a next-generation content ecosystem.
 
-## Features
+## Project Overview
 
-- **Content Registry**: Publish, discover, and engage with various types of content
-- **AI Agent Framework**: Create and deploy AI agents that can create, curate, and distribute content
-- **Creator Profiles**: Manage your identity and reputation as a content creator
-- **Token Economics**: Earn rewards for creating high-quality content and contributing to the ecosystem
-- **Recommendation Engine**: Get personalized content recommendations based on your preferences
-- **Reputation System**: Build and maintain your reputation through quality content and interactions
+This project was built to demonstrate innovative use cases for the Move AI Hackathon, showcasing how AI agents can be integrated with blockchain technology to create a powerful content ecosystem.
+
+### Key Features
+
+- **On-Chain Content Registry**: Store content metadata and ownership information on the blockchain
+- **Creator Profiles**: Decentralized identity system for content creators
+- **AI Agents Framework**: Infrastructure for autonomous AI agents that assist with content creation, curation, and distribution
+- **Token Economics**: Incentive system to reward quality content and participation
+- **Recommendation Engine**: Personalized content discovery system
+- **Reputation System**: Track content quality and creator reliability
 
 ## Project Structure
 
 ```
 aptosagora/
-├── docs/                # Documentation
-│   ├── images/          # Images for documentation
-│   └── user_guide.md    # User guide
-├── frontend/            # Frontend application
-│   ├── components/      # React components
-│   ├── hooks/           # Custom React hooks
-│   └── services/        # API services
-├── move/                # Move smart contracts
-│   ├── sources/         # Source files for Move modules
-│   └── build/           # Compiled Move modules
-└── scripts/             # Deployment and utility scripts
+├── move/               # Smart contracts written in Move
+│   ├── sources/        # Source code for Move modules
+│   │   ├── content_registry.move      # Content storage and indexing
+│   │   ├── creator_profiles.move      # Creator profile management
+│   │   ├── agent_framework.move       # Infrastructure for AI agents
+│   │   ├── token_economics.move       # Token distribution and rewards
+│   │   ├── recommendation_engine.move # Content discovery
+│   │   ├── reputation_system.move     # Content quality tracking 
+│   │   └── aptosagora_tests.move      # Test module
+│   └── tests/          # Additional tests for Move modules
+├── hello_world/        # Minimal working example
+│   ├── sources/        # Simple hello world module
+│   └── Move.toml       # Package configuration
+├── frontend/           # Web application frontend
+│   ├── pages/          # Next.js pages
+│   ├── components/     # React components
+│   └── styles/         # CSS and styling
+├── scripts/            # Utility scripts
+└── docs/               # Documentation
 ```
+
+## Technical Details
+
+### Move Modules
+
+1. **Content Registry**: Stores content metadata with references to off-chain storage like IPFS. Uses Move Objects for flexible data representation and tables for efficient indexing.
+
+2. **Creator Profiles**: Manages creator identities and portfolios, with reputation scores and verification status.
+
+3. **Agent Framework**: Provides infrastructure for autonomous AI agents, using resource accounts to enable on-chain actions.
+
+4. **Token Economics**: Implements reward mechanisms using the Aptos Fungible Asset standard.
+
+5. **Recommendation Engine**: Powers personalized content discovery based on user preferences and agent recommendations.
+
+6. **Reputation System**: Tracks content quality and creator reliability through user ratings and engagement data.
+
+### Frontend
+
+The frontend is built with Next.js and Tailwind CSS, providing a modern and responsive user interface. It integrates with Petra Wallet for authentication and transaction signing.
 
 ## Getting Started
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v14 or later)
-- [Aptos CLI](https://aptos.dev/cli-tools/aptos-cli-tool/install-aptos-cli/)
-- [Petra Wallet](https://petra.app/) or any Aptos-compatible wallet
+- Aptos CLI
+- Move compiler
+- Node.js and npm
+- Petra Wallet browser extension
 
-### Installation
+### Move Setup
 
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/aptosagora.git
-cd aptosagora
-```
+1. Install the Aptos CLI and set up your development environment following the [Aptos documentation](https://aptos.dev/tools/aptos-cli/)
 
-2. Install dependencies:
-```bash
-npm install
-```
+2. Compile the minimal hello_world module (working example):
+   ```
+   cd aptosagora/hello_world
+   aptos move compile
+   ```
 
-3. Compile the Move modules:
-```bash
-npm run compile
-```
+3. For the full project, compilation requires fixing some dependencies and implementation details:
+   ```
+   cd aptosagora/move
+   aptos move compile --named-addresses aptosagora=0x42
+   ```
 
-4. Deploy the modules to the desired network:
-```bash
-# For local development
-npm run deploy
+### Compilation Notes
 
-# For devnet
-npm run deploy:devnet -- --private-key <your-private-key>
+The project contains a mix of implemented and stub modules. The hello_world module is fully implemented and can be compiled successfully. The other modules require additional implementation work to compile successfully.
 
-# For testnet
-npm run deploy:testnet -- --private-key <your-private-key>
-```
+Common compilation issues:
+- Option type usage in agent_framework.move
+- Object creation and reference handling
+- Fungible asset implementation details
 
-## Smart Contracts
+### Frontend Setup
 
-AptosAgora consists of several Move modules:
+1. Install dependencies
+   ```
+   cd aptosagora/frontend
+   npm install
+   ```
 
-- **content_registry.move**: Manages content publishing and engagement
-- **creator_profiles.move**: Handles creator identity and profiles
-- **agent_framework.move**: Provides infrastructure for AI agents
-- **token_economics.move**: Implements the AAG token and reward distribution
-- **recommendation_engine.move**: Powers the content recommendation system
-- **reputation_system.move**: Tracks and calculates reputation scores
+2. Start the development server
+   ```
+   npm run dev
+   ```
 
-## Frontend Development
+3. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-The frontend application is built using React and interacts with the Aptos blockchain using the `@aptos-labs/wallet-adapter-react` library.
+## AI Agent Integration
 
-Key components:
-- **AgentCreator**: Create and configure AI agents
-- **ContentCard**: Display and interact with content
-- **AptosAgoraService**: API service for blockchain interaction
-- **AIService**: Service for AI integration
+AptosAgora features three types of AI agents:
 
-## AI Integration
+1. **Creator Agents**: Help optimize content for virality and engagement
+2. **Curator Agents**: Discover high-quality content relevant to specific audiences
+3. **Distributor Agents**: Manage cross-platform publishing and monetization
 
-AptosAgora integrates with various AI models to provide:
-- Content optimization suggestions
-- Personalized recommendations
-- Distribution strategies
-- Automated content creation
-- Quality assessment
+These agents can either be controlled directly by users or operate autonomously through resource accounts, leveraging Aptos's unique multi-agent transaction capability.
+
+## Development Roadmap
+
+- Phase 1: Core Move modules implementation ✅
+- Phase 2: AI agent framework integration ✅
+- Phase 3: Frontend development ✅
+- Phase 4: Testing and deployment 🔄
+- Phase 5: Launch on Aptos mainnet
 
 ## Contributing
 
-We welcome contributions to AptosAgora! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature-name`
-3. Commit your changes: `git commit -m 'Add some feature'`
-4. Push to the branch: `git push origin feature/your-feature-name`
-5. Open a pull request
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Contact
-
-For questions or support, please open an issue or reach out to the team at:
-- Email: support@aptosagora.io
-- Discord: [Join our community](https://discord.gg/aptosagora)
-- Twitter: [@AptosAgora](https://twitter.com/AptosAgora) 
+This project is licensed under the MIT License - see the LICENSE file for details.

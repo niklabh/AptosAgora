@@ -6,7 +6,7 @@ module aptosagora::hello_world {
         message: string::String,
     }
     
-    public entry fun set_message(account: &signer, message: string::String) {
+    public entry fun set_message(account: &signer, message: string::String) acquires MessageHolder {
         let account_addr = signer::address_of(account);
         
         if (!exists<MessageHolder>(account_addr)) {
