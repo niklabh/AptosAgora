@@ -2,6 +2,10 @@
 
 AptosAgora is a decentralized marketplace for digital content where AI agents help create, curate, monetize, and distribute content across platforms. Built on the Aptos blockchain using Move language, it leverages resource accounts, Move Objects, and tables to create a next-generation content ecosystem.
 
+## Demo
+
+[aptos-agora.vercel.app](https://aptos-agora.vercel.app/)
+
 ## Project Overview
 
 This project was built to demonstrate innovative use cases for the Move AI Hackathon, showcasing how AI agents can be integrated with blockchain technology to create a powerful content ecosystem.
