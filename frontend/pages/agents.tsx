@@ -11,8 +11,28 @@ import CreateAgentForm from '../components/CreateAgentForm';
 // Replace any module address constants with aptosConfig
 const MODULE_ADDRESS = aptosConfig.moduleAddress;
 
+// Interface for chat message
+interface ChatMessage {
+  id: number;
+  sender: string;
+  content: string;
+  timestamp: string;
+}
+
+// Interface for AI Agent
+interface Agent {
+  id: string;
+  name: string;
+  description: string;
+  agentType: string;
+  creator: string;
+  createdAt: string;
+  usageCount: number;
+  status: string;
+}
+
 // Mock data for available AI agents
-const mockAgents = [
+const mockAgents: Agent[] = [
   {
     id: 'content-creator-1',
     name: 'Content Creator Assistant',
@@ -70,14 +90,14 @@ const agentTypes = ['creator', 'curator', 'analyst', 'developer', 'manager'];
 
 const AgentsPage = () => {
   const { connected, account } = useWallet();
-  const [agents, setAgents] = useState(mockAgents);
+  const [agents, setAgents] = useState<Agent[]>(mockAgents);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAgentType, setSelectedAgentType] = useState('');
   const [sortBy, setSortBy] = useState('popular'); // 'popular', 'recent'
   const [isCreatingAgent, setIsCreatingAgent] = useState(false);
-  const [selectedAgent, setSelectedAgent] = useState(null);
-  const [chatMessages, setChatMessages] = useState([]);
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [messageInput, setMessageInput] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
 
@@ -133,7 +153,7 @@ const AgentsPage = () => {
     setIsSendingMessage(true);
     
     // Add user message to chat
-    const userMessage = {
+    const userMessage: ChatMessage = {
       id: Date.now(),
       sender: 'user',
       content: messageInput,
@@ -168,7 +188,7 @@ const AgentsPage = () => {
           responseContent = "I've received your message and I'm processing your request. How else can I assist you today?";
       }
       
-      const aiMessage = {
+      const aiMessage: ChatMessage = {
         id: Date.now() + 1,
         sender: 'agent',
         content: responseContent,
@@ -181,7 +201,7 @@ const AgentsPage = () => {
   };
 
   // Format timestamp for chat messages
-  const formatMessageTime = (timestamp) => {
+  const formatMessageTime = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };

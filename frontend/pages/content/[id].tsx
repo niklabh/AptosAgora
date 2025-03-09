@@ -9,8 +9,35 @@ import { client, aptosConfig } from '../../utils/aptosClient';
 // AptosAgora module address (defined in Move.toml)
 const MODULE_ADDRESS = aptosConfig.moduleAddress;
 
+// Define content interface
+interface Comment {
+  id: string;
+  author: string;
+  authorName: string;
+  content: string;
+  timestamp: string;
+  likes: number;
+}
+
+interface Content {
+  id: string;
+  title: string;
+  description: string;
+  contentType: string;
+  creator: string;
+  creatorName: string;
+  createdAt: string;
+  tags: string[];
+  engagementCount: number;
+  content?: string;
+  comments: Comment[];
+  imageUrl?: string;
+  videoUrl?: string;
+  audioUrl?: string;
+}
+
 // Mock data for content items (in a real app, this would come from the blockchain)
-const mockContents = {
+const mockContents: Record<string, Content> = {
   'guide-to-aptos': {
     id: 'guide-to-aptos',
     title: 'The Ultimate Guide to Aptos Blockchain',
@@ -176,7 +203,7 @@ const ContentDetailPage = () => {
   const router = useRouter();
   const { id } = router.query;
   const { connected, account, signAndSubmitTransaction } = useWallet();
-  const [content, setContent] = useState(null);
+  const [content, setContent] = useState<Content | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [commentText, setCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
@@ -191,7 +218,9 @@ const ContentDetailPage = () => {
     // In a real implementation, this would query the blockchain
     // For now, use mock data
     setTimeout(() => {
-      const contentData = mockContents[id];
+      // Use string type assertion for id since it could be string or string[]
+      const contentId = typeof id === 'string' ? id : Array.isArray(id) ? id[0] : '';
+      const contentData = mockContents[contentId];
       if (contentData) {
         setContent(contentData);
       } else {
@@ -203,13 +232,17 @@ const ContentDetailPage = () => {
   }, [id, router]);
 
   // Format date for display
-  const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+  const formatDate = (dateString: string) => {
+    const options: Intl.DateTimeFormatOptions = { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
   // Handle comment submission
-  const handleSubmitComment = async (e) => {
+  const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!connected || !account) {
@@ -219,6 +252,11 @@ const ContentDetailPage = () => {
     
     if (!commentText.trim()) {
       toast.error('Comment cannot be empty');
+      return;
+    }
+    
+    if (!content) {
+      toast.error('Content not found');
       return;
     }
     
@@ -239,7 +277,7 @@ const ContentDetailPage = () => {
       // Simulate transaction success
       setTimeout(() => {
         // Add the new comment to the content
-        const newComment = {
+        const newComment: Comment = {
           id: `comment-${Date.now()}`,
           author: account.address,
           authorName: account.address.substring(0, 6) + '...',
@@ -248,11 +286,14 @@ const ContentDetailPage = () => {
           likes: 0
         };
         
-        setContent(prevContent => ({
-          ...prevContent,
-          comments: [newComment, ...prevContent.comments],
-          engagementCount: prevContent.engagementCount + 1
-        }));
+        setContent(prevContent => {
+          if (!prevContent) return prevContent;
+          return {
+            ...prevContent,
+            comments: [newComment, ...prevContent.comments],
+            engagementCount: prevContent.engagementCount + 1
+          };
+        });
         
         setCommentText('');
         toast.success('Comment added successfully');
@@ -277,6 +318,11 @@ const ContentDetailPage = () => {
       return;
     }
     
+    if (!content) {
+      toast.error('Content not found');
+      return;
+    }
+    
     setIsLiking(true);
     
     try {
@@ -293,10 +339,13 @@ const ContentDetailPage = () => {
       
       // Simulate transaction success
       setTimeout(() => {
-        setContent(prevContent => ({
-          ...prevContent,
-          engagementCount: prevContent.engagementCount + 1
-        }));
+        setContent(prevContent => {
+          if (!prevContent) return prevContent;
+          return {
+            ...prevContent,
+            engagementCount: prevContent.engagementCount + 1
+          };
+        });
         
         toast.success('Content liked successfully');
         setIsLiking(false);
@@ -322,7 +371,7 @@ const ContentDetailPage = () => {
         return (
           <div className="prose prose-indigo max-w-none text-gray-900">
             <div dangerouslySetInnerHTML={{ 
-              __html: content.content
+              __html: content.content ? content.content
                 .replace(/^# (.*$)/gm, '<h1 class="text-3xl font-bold mt-6 mb-4 text-gray-900">$1</h1>')
                 .replace(/^## (.*$)/gm, '<h2 class="text-2xl font-bold mt-5 mb-3 text-gray-900">$1</h2>')
                 .replace(/^### (.*$)/gm, '<h3 class="text-xl font-bold mt-4 mb-2 text-gray-900">$1</h3>')
@@ -336,6 +385,7 @@ const ContentDetailPage = () => {
                 })
                 .replace(/<tr>.*<\/tr>/, '<table class="min-w-full divide-y divide-gray-300 my-4 text-gray-900"><thead>$&</thead><tbody>')
                 .replace(/<\/tr>(?![\s\S]*<\/tr>)/, '</tbody></table>')
+                : content.description
             }} />
           </div>
         );
